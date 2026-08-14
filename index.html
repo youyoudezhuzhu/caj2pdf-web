@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAJ 转 PDF — 纯浏览器转换器</title>
+  <meta name="description" content="免费在线的 CAJ/KDH 转 PDF 工具。纯浏览器端转换，文件不出设备，隐私安全，无需上传服务器。支持批量转换。">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+      min-height: 100vh;
+      color: #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    .container { max-width: 860px; width: 100%; }
+    header { text-align: center; margin-bottom: 30px; }
+    header h1 {
+      font-size: 2rem;
+      background: linear-gradient(90deg, #4facfe, #00f2fe);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    header p { color: #a0b0c0; font-size: 0.95rem; }
+
+    .dropzone {
+      border: 2px dashed #4a6a8a;
+      border-radius: 16px;
+      padding: 60px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(255,255,255,0.04);
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #00f2fe;
+      background: rgba(0,242,254,0.08);
+    }
+    .dropzone .icon { font-size: 3.5rem; margin-bottom: 12px; }
+    .dropzone h2 { font-size: 1.3rem; margin-bottom: 6px; }
+    .dropzone p { color: #8090a0; font-size: 0.9rem; }
+    .dropzone input[type=file] { display: none; }
+
+    .file-list { margin-top: 20px; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      gap: 12px;
+    }
+    .file-item .name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.9rem;
+    }
+    .file-item .status { font-size: 0.8rem; white-space: nowrap; }
+    .file-item .status.pending { color: #a0b0c0; }
+    .file-item .status.converting { color: #ffd700; }
+    .file-item .status.done { color: #4ade80; }
+    .file-item .status.error { color: #f87171; }
+    .file-item .size { color: #8090a0; font-size: 0.75rem; white-space: nowrap; }
+    .file-item .remove {
+      background: none; border: none; color: #f87171;
+      cursor: pointer; font-size: 1.1rem; padding: 0 4px;
+    }
+    .file-item .remove:hover { color: #ff4444; }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 12px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4facfe, #00f2fe);
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #4facfe, #00f2fe);
+      color: #0a1628;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,242,254,0.3); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #e8e8e8;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.18); }
+    .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 30px;
+    }
+    .feature {
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .feature .emoji { font-size: 1.8rem; margin-bottom: 6px; }
+    .feature h3 { font-size: 0.95rem; margin-bottom: 4px; color: #e8e8e8; }
+    .feature p { font-size: 0.78rem; color: #8090a0; }
+
+    .result-note {
+      margin-top: 16px;
+      text-align: center;
+      color: #8090a0;
+      font-size: 0.85rem;
+    }
+    .result-note a { color: #4facfe; text-decoration: none; }
+    .result-note a:hover { text-decoration: underline; }
+
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      color: #506070;
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+    footer a { color: #4facfe; text-decoration: none; }
+
+    .engine-status {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(0,0,0,0.7);
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 0.75rem;
+      color: #8090a0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 100;
+    }
+    .engine-status .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #f87171;
+    }
+    .engine-status .dot.ready { background: #4ade80; }
+    .engine-status .dot.loading { background: #ffd700; animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: 0.3; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📄 CAJ 转 PDF</h1>
+      <p>纯浏览器端转换 · 文件不出设备 · 免费无限制</p>
+    </header>
+
+    <div class="dropzone" id="dropzone">
+      <div class="icon">📥</div>
+      <h2>拖拽 CAJ/KDH 文件到这里，或点击选择</h2>
+      <p>支持 .caj / .kdh 格式，可多选批量转换</p>
+      <input type="file" id="fileInput" multiple accept=".caj,.kdh" />
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div class="progress-bar" id="progressBar"><div class="fill" id="progressFill"></div></div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="convertBtn" disabled>开始转换</button>
+      <button class="btn btn-secondary" id="clearBtn" disabled>清空列表</button>
+    </div>
+
+    <div class="result-note" id="resultNote"></div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="emoji">🔒</div>
+        <h3>隐私安全</h3>
+        <p>转换完全在浏览器本地完成，文件不上传任何服务器</p>
+      </div>
+      <div class="feature">
+        <div class="emoji">⚡</div>
+        <h3>无限大小</h3>
+        <p>没有文件大小限制，取决于你的设备内存</p>
+      </div>
+      <div class="feature">
+        <div class="emoji">📚</div>
+        <h3>保留目录</h3>
+        <p>转换后保留书签目录结构，文字可复制</p>
+      </div>
+      <div class="feature">
+        <div class="emoji">🌍</div>
+        <h3>全平台</h3>
+        <p>Windows / Mac / Linux / Android / iPhone 浏览器均可使用</p>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        基于 <a href="https://mupdf.com" target="_blank">MuPDF.js</a>（AGPL-3.0）构建 · 解析逻辑参考
+        <a href="https://github.com/caj2pdf/caj2pdf" target="_blank">caj2pdf</a> 与
+        <a href="https://github.com/qgjyf2001/caj2pdf-wasm" target="_blank">caj2pdf-wasm</a><br>
+        ⚠️ 仅支持 CAJ 格式（知网期刊/硕博论文）。KDH/NH 格式需知网官方软件转换。
+      </p>
+    </footer>
+  </div>
+
+  <div class="engine-status" id="engineStatus">
+    <span class="dot" id="engineDot"></span>
+    <span id="engineText">引擎加载中…</span>
+  </div>
+
+  <script type="module">
+    import { extractPDF, fixPDF, detectType } from './js/caj-parser.js';
+    import { loadMupdf, cleanPDF } from './js/pdf-fixer.js';
+
+    // DOM 元素
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const convertBtn = document.getElementById('convertBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const resultNote = document.getElementById('resultNote');
+    const engineDot = document.getElementById('engineDot');
+    const engineText = document.getElementById('engineText');
+
+    // 状态
+    let files = [];       // {file, status, size, error}
+    let mupdfReady = false;
+
+    // 引擎加载
+    async function initEngine() {
+      engineDot.className = 'dot loading';
+      engineText.textContent = '引擎加载中…';
+      try {
+        await loadMupdf();
+        mupdfReady = true;
+        engineDot.className = 'dot ready';
+        engineText.textContent = '转换引擎就绪 ✓';
+      } catch (e) {
+        engineDot.className = 'dot';
+        engineText.textContent = '引擎加载失败：' + (e.message || e);
+        console.error('mupdf 加载失败:', e);
+      }
+    }
+
+    // 文件选择
+    function addFiles(newFiles) {
+      for (const f of newFiles) {
+        if (!/\.(caj|kdh)$/i.test(f.name)) {
+          files.push({ file: f, status: 'error', error: '不支持的文件类型', size: f.size });
+        } else {
+          files.push({ file: f, status: 'pending', error: null, size: f.size });
+        }
+      }
+      renderList();
+      updateButtons();
+    }
+
+    function removeFile(idx) {
+      files.splice(idx, 1);
+      renderList();
+      updateButtons();
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    }
+
+    function renderList() {
+      fileList.innerHTML = '';
+      files.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+
+        const statusText = {
+          pending: '等待转换',
+          converting: '转换中…',
+          done: '✓ 完成',
+          error: item.error || '失败'
+        };
+        const statusClass = {
+          pending: 'pending',
+          converting: 'converting',
+          done: 'done',
+          error: 'error'
+        };
+
+        div.innerHTML = `
+          <span class="name" title="${item.file.name}">${item.file.name}</span>
+          <span class="size">${formatSize(item.size)}</span>
+          <span class="status ${statusClass[item.status]}">${statusText[item.status]}</span>
+          ${item.status === 'done'
+            ? `<button class="remove" data-download="${idx}" title="下载 PDF">⬇️</button>`
+            : `<button class="remove" data-remove="${idx}" title="移除">✕</button>`
+          }
+        `;
+        fileList.appendChild(div);
+      });
+
+      // 事件绑定
+      fileList.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => removeFile(parseInt(btn.dataset.remove)));
+      });
+      fileList.querySelectorAll('[data-download]').forEach(btn => {
+        btn.addEventListener('click', () => downloadPDF(parseInt(btn.dataset.download)));
+      });
+    }
+
+    function updateButtons() {
+      const hasPending = files.some(f => f.status === 'pending' || f.status === 'error');
+      convertBtn.disabled = !mupdfReady || !files.some(f => f.status === 'pending' || f.status === 'error');
+      clearBtn.disabled = files.length === 0;
+    }
+
+    // 单个文件转换
+    async function convertOne(item) {
+      item.status = 'converting';
+      renderList();
+      try {
+        const buf = await item.file.arrayBuffer();
+        const cajBytes = new Uint8Array(buf);
+
+        // 1. 提取嵌入 PDF
+        const pdfBytes = extractPDF(cajBytes);
+
+        // 2. 修复 PDF（补对象、EOF）
+        const fixedBytes = fixPDF(pdfBytes);
+
+        // 3. mupdf 清理（重建 xref）
+        const cleanBytes = cleanPDF(fixedBytes);
+
+        item.result = cleanBytes;
+        item.status = 'done';
+      } catch (e) {
+        item.status = 'error';
+        item.error = e.message || String(e);
+      }
+      renderList();
+    }
+
+    // 批量转换
+    async function convertAll() {
+      const pending = files.filter(f => f.status === 'pending' || f.status === 'error');
+      if (!pending.length) return;
+
+      convertBtn.disabled = true;
+      clearBtn.disabled = true;
+      progressBar.style.display = 'block';
+      resultNote.textContent = '';
+
+      let done = 0;
+      for (const item of pending) {
+        await convertOne(item);
+        done++;
+        progressFill.style.width = (done / pending.length * 100) + '%';
+      }
+
+      progressBar.style.display = 'none';
+      const success = files.filter(f => f.status === 'done').length;
+      const failed = files.filter(f => f.status === 'error').length;
+      resultNote.innerHTML = `转换完成：${success} 个成功${failed ? `，${failed} 个失败` : ''}。点击文件旁的 ⬇️ 下载。`;
+      updateButtons();
+    }
+
+    // 下载
+    function downloadPDF(idx) {
+      const item = files[idx];
+      if (!item.result) return;
+      const blob = new Blob([item.result], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.file.name.replace(/\.(caj|kdh)$/i, '.pdf');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // 事件
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => {
+      addFiles(fileInput.files);
+      fileInput.value = '';
+    });
+    convertBtn.addEventListener('click', convertAll);
+    clearBtn.addEventListener('click', () => {
+      files = [];
+      renderList();
+      updateButtons();
+      resultNote.textContent = '';
+    });
+
+    // 启动
+    initEngine();
+    updateButtons();
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# 依赖包（本地已内置 lib/）
+node_modules/
+package-lock.json
+yarn.lock
+*.tgz
+mupdf.tgz
+
+# 测试产物
+/test-output/
+*.pdf
+
+# 系统文件
+.DS_Store
+Thumbs.db

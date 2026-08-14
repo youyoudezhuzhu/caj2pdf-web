@@ -1,0 +1,15 @@
+{
+  "name": "caj2pdf-web",
+  "version": "1.0.0",
+  "description": "纯浏览器端 CAJ/KDH 转 PDF 工具（无服务器，文件不出设备）",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "echo '静态站点无需构建'"
+  },
+  "keywords": ["caj", "pdf", "cnki", "converter", "wasm"],
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "mupdf": "^1.28.0"
+  }
+}
