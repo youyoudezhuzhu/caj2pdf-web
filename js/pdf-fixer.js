@@ -14,7 +14,7 @@ let mupdfModule = null;
  */
 export async function loadMupdf() {
   if (mupdfModule) return mupdfModule;
-  const mod = await import('./lib/mupdf.js');
+  const mod = await import('../lib/mupdf.js');
   mupdfModule = mod.default;
   return mupdfModule;
 }
